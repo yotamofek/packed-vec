@@ -1,0 +1,14 @@
+[package]
+name = "packed-vec"
+description = "Sorted, deduped, compressed vector of integers."
+version = "0.0.1-alpha.1"
+authors = ["Yotam Ofek <yotam.ofek@gmail.com>"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/yotamofek/packed-vec/"
+
+[dependencies]
+num-traits = "0.2"
+
+[dev-dependencies]
+rand = "0.8"
