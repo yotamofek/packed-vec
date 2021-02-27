@@ -9,7 +9,7 @@ use std::{
     ops,
 };
 
-pub use num_traits::{Unsigned, Zero};
+pub use num_traits::Zero;
 
 pub trait NeBytes<const SIZE: usize> {
     fn from_ne_bytes(bytes: [u8; SIZE]) -> Self;
@@ -21,10 +21,8 @@ pub trait Num:
     + Copy
     + PartialEq
     + PartialOrd
-    + ops::Add<Self, Output = Self>
     + ops::Sub<Self, Output = Self>
     + Zero
-    + Unsigned
     + NeBytes<{ size_of::<Self>() }>
 where
     [u8; size_of::<Self>()]: ,
@@ -37,10 +35,8 @@ where
         + Copy
         + PartialEq
         + PartialOrd
-        + ops::Add<Self, Output = Self>
         + ops::Sub<Self, Output = Self>
         + Zero
-        + Unsigned
         + NeBytes<{ size_of::<Self>() }>,
     [u8; size_of::<Self>()]: ,
 {
