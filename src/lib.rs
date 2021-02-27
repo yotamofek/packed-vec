@@ -284,7 +284,10 @@ where
         self.cur_val += delta.as_value();
     }
 
-    unsafe fn push(&mut self, item: V) -> InsertPosition {
+    /// # Safety
+    /// Using this function on a set of elements that is either not completely sorted or not completely
+    /// deduped can corrupt this structure's internal storage
+    pub unsafe fn push(&mut self, item: V) -> InsertPosition {
         while let Some(delta) = self.read_delta() {
             let new_val = self.cur_val + delta.as_value();
 
