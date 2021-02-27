@@ -1,7 +1,7 @@
 [package]
 name = "packed-vec"
 description = "Sorted, deduped, compressed vector of integers."
-version = "0.0.1-alpha.3"
+version = "0.0.1-alpha.4"
 authors = ["Yotam Ofek <yotam.ofek@gmail.com>"]
 edition = "2018"
 license = "MIT"
