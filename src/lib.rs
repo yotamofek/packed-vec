@@ -3,12 +3,13 @@
 
 use std::{
     convert::{TryFrom, TryInto},
-    fmt::{Debug, Display},
+    fmt::{self, Debug},
     marker::PhantomData,
     mem::size_of,
+    ops,
 };
 
-use num_traits::{NumAssign, PrimInt, Unsigned};
+pub use num_traits::{Unsigned, Zero};
 
 pub trait NeBytes<const SIZE: usize> {
     fn from_ne_bytes(bytes: [u8; SIZE]) -> Self;
@@ -16,7 +17,15 @@ pub trait NeBytes<const SIZE: usize> {
 }
 
 pub trait Num:
-    PrimInt + Unsigned + NumAssign + Debug + Display + NeBytes<{ size_of::<Self>() }>
+    Sized
+    + Copy
+    + PartialEq
+    + PartialOrd
+    + ops::Add<Self, Output = Self>
+    + ops::Sub<Self, Output = Self>
+    + Zero
+    + Unsigned
+    + NeBytes<{ size_of::<Self>() }>
 where
     [u8; size_of::<Self>()]: ,
 {
@@ -24,7 +33,15 @@ where
 
 impl<N> Num for N
 where
-    N: PrimInt + Unsigned + NumAssign + Debug + Display + NeBytes<{ size_of::<Self>() }>,
+    N: Sized
+        + Copy
+        + PartialEq
+        + PartialOrd
+        + ops::Add<Self, Output = Self>
+        + ops::Sub<Self, Output = Self>
+        + Zero
+        + Unsigned
+        + NeBytes<{ size_of::<Self>() }>,
     [u8; size_of::<Self>()]: ,
 {
 }
@@ -49,7 +66,6 @@ macro_rules! impl_ne_bytes {
 
 impl_ne_bytes!(u64 u32 u16 u8);
 
-#[derive(Debug)]
 pub struct PackedVec<V, D>
 where
     V: Num + From<D>,
@@ -61,6 +77,35 @@ where
 
     _v_marker: PhantomData<V>,
     _d_marker: PhantomData<D>,
+}
+
+impl<V, D> Debug for PackedVec<V, D>
+where
+    V: Num + From<D> + Debug,
+    D: Num + TryFrom<V>,
+    [u8; size_of::<V>()]: ,
+    [u8; size_of::<D>()]: ,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let vec = self.iter().collect::<Vec<_>>();
+
+        vec.fmt(f)
+    }
+}
+
+impl<V, D> Clone for PackedVec<V, D>
+where
+    V: Num + From<D>,
+    D: Num + TryFrom<V>,
+    [u8; size_of::<V>()]: ,
+    [u8; size_of::<D>()]: ,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            ..Self::new()
+        }
+    }
 }
 
 impl<V, D> Default for PackedVec<V, D>
@@ -113,7 +158,7 @@ where
         match *self {
             Delta::Small(small) => small.into_ne_bytes().to_vec(),
             Delta::Big(big) => {
-                let mut bytes = D::into_ne_bytes(D::min_value()).to_vec();
+                let mut bytes = D::into_ne_bytes(D::zero()).to_vec();
                 bytes.extend_from_slice(&V::into_ne_bytes(big));
                 bytes
             }
@@ -161,7 +206,7 @@ where
     pub fn iter(&self) -> PackedVecIter<'_, V, D> {
         PackedVecIter {
             raw: self.inner.as_slice(),
-            cur_val: V::min_value(),
+            cur_val: V::zero(),
 
             _marker: Default::default(),
         }
@@ -179,7 +224,7 @@ where
     pub fn push(&mut self, el: V) -> InsertPosition {
         let mut extender = PackedVecExtender {
             vec: self,
-            cur_val: V::min_value(),
+            cur_val: V::zero(),
             pos: 0,
             idx: 0,
 
@@ -194,7 +239,7 @@ where
     pub fn extender(&mut self) -> PackedVecExtender<'_, V, D> {
         PackedVecExtender {
             vec: self,
-            cur_val: V::min_value(),
+            cur_val: V::zero(),
             pos: 0,
             idx: 0,
 
@@ -281,7 +326,7 @@ where
     unsafe fn advance(&mut self, delta: Delta<V, D>) {
         self.idx += 1;
         self.pos += delta.size_of_val();
-        self.cur_val += delta.as_value();
+        self.cur_val = self.cur_val + delta.as_value();
     }
 
     /// # Safety
@@ -383,7 +428,7 @@ where
 
             let delta = delta.as_value();
 
-            self.cur_val += delta;
+            self.cur_val = self.cur_val + delta;
             Some(self.cur_val)
         }
     }
