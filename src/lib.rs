@@ -1,4 +1,5 @@
-#![feature(is_sorted)]
+#![allow(incomplete_features)]
+#![feature(is_sorted, const_generics, const_evaluatable_checked)]
 
 use std::{
     convert::{TryFrom, TryInto},
@@ -14,13 +15,17 @@ pub trait NeBytes<const SIZE: usize> {
     fn into_ne_bytes(self) -> [u8; SIZE];
 }
 
-pub trait Num<const SIZE: usize>:
-    PrimInt + Unsigned + NumAssign + Debug + Display + NeBytes<SIZE>
+pub trait Num:
+    PrimInt + Unsigned + NumAssign + Debug + Display + NeBytes<{ size_of::<Self>() }>
+where
+    [u8; size_of::<Self>()]: ,
 {
 }
 
-impl<N, const SIZE: usize> Num<SIZE> for N where
-    N: PrimInt + Unsigned + NumAssign + Debug + Display + NeBytes<SIZE>
+impl<N> Num for N
+where
+    N: PrimInt + Unsigned + NumAssign + Debug + Display + NeBytes<{ size_of::<Self>() }>,
+    [u8; size_of::<Self>()]: ,
 {
 }
 
@@ -45,10 +50,12 @@ macro_rules! impl_ne_bytes {
 impl_ne_bytes!(u64 u32 u16 u8);
 
 #[derive(Debug)]
-pub struct PackedVec<V, D, const SIZE: usize, const DSIZE: usize>
+pub struct PackedVec<V, D>
 where
-    V: Num<SIZE> + From<D>,
-    D: Num<DSIZE> + TryFrom<V>,
+    V: Num + From<D>,
+    D: Num + TryFrom<V>,
+    [u8; size_of::<V>()]: ,
+    [u8; size_of::<D>()]: ,
 {
     inner: Vec<u8>,
 
@@ -56,25 +63,29 @@ where
     _d_marker: PhantomData<D>,
 }
 
-impl<V, D, const SIZE: usize, const DSIZE: usize> Default for PackedVec<V, D, SIZE, DSIZE>
+impl<V, D> Default for PackedVec<V, D>
 where
-    V: Num<SIZE> + From<D>,
-    D: Num<DSIZE> + TryFrom<V>,
+    V: Num + From<D>,
+    D: Num + TryFrom<V>,
+    [u8; size_of::<V>()]: ,
+    [u8; size_of::<D>()]: ,
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-enum Delta<V, D, const SIZE: usize, const DSIZE: usize> {
+enum Delta<V, D> {
     Small(D),
     Big(V),
 }
 
-impl<V, D, const SIZE: usize, const DSIZE: usize> Delta<V, D, SIZE, DSIZE>
+impl<V, D> Delta<V, D>
 where
-    V: Num<SIZE> + From<D>,
-    D: Num<DSIZE> + TryFrom<V>,
+    V: Num + From<D>,
+    D: Num + TryFrom<V>,
+    [u8; size_of::<V>()]: ,
+    [u8; size_of::<D>()]: ,
 {
     fn compress(delta: V) -> Self {
         if let Ok(small_delta) = D::try_from(delta) {
@@ -110,10 +121,12 @@ where
     }
 }
 
-fn read_delta<V, D, const SIZE: usize, const DSIZE: usize>(data: &[u8]) -> Delta<V, D, SIZE, DSIZE>
+fn read_delta<V, D>(data: &[u8]) -> Delta<V, D>
 where
-    V: Num<SIZE> + From<D>,
-    D: Num<DSIZE> + TryFrom<V>,
+    V: Num + From<D>,
+    D: Num + TryFrom<V>,
+    [u8; size_of::<V>()]: ,
+    [u8; size_of::<D>()]: ,
 {
     let delta = D::from_ne_bytes(data[0..size_of::<D>()].try_into().unwrap());
 
@@ -130,10 +143,12 @@ where
     }
 }
 
-impl<V, D, const SIZE: usize, const DSIZE: usize> PackedVec<V, D, SIZE, DSIZE>
+impl<V, D> PackedVec<V, D>
 where
-    V: Num<SIZE> + From<D>,
-    D: Num<DSIZE> + TryFrom<V>,
+    V: Num + From<D>,
+    D: Num + TryFrom<V>,
+    [u8; size_of::<V>()]: ,
+    [u8; size_of::<D>()]: ,
 {
     pub fn new() -> Self {
         Self {
@@ -143,7 +158,7 @@ where
         }
     }
 
-    pub fn iter(&self) -> PackedVecIter<'_, V, D, SIZE, DSIZE> {
+    pub fn iter(&self) -> PackedVecIter<'_, V, D> {
         PackedVecIter {
             raw: self.inner.as_slice(),
             cur_val: V::min_value(),
@@ -176,7 +191,7 @@ where
     }
 
     #[inline]
-    pub fn extender(&mut self) -> PackedVecExtender<'_, V, D, SIZE, DSIZE> {
+    pub fn extender(&mut self) -> PackedVecExtender<'_, V, D> {
         PackedVecExtender {
             vec: self,
             cur_val: V::min_value(),
@@ -208,12 +223,14 @@ where
     }
 }
 
-pub struct PackedVecExtender<'a, V, D, const SIZE: usize, const DSIZE: usize>
+pub struct PackedVecExtender<'a, V, D>
 where
-    V: Num<SIZE> + From<D>,
-    D: Num<DSIZE> + TryFrom<V>,
+    V: Num + From<D>,
+    D: Num + TryFrom<V>,
+    [u8; size_of::<V>()]: ,
+    [u8; size_of::<D>()]: ,
 {
-    vec: &'a mut PackedVec<V, D, SIZE, DSIZE>,
+    vec: &'a mut PackedVec<V, D>,
     cur_val: V,
     pos: usize,
     idx: usize,
@@ -236,12 +253,14 @@ impl InsertPosition {
     }
 }
 
-impl<'a, V, D, const SIZE: usize, const DSIZE: usize> PackedVecExtender<'a, V, D, SIZE, DSIZE>
+impl<'a, V, D> PackedVecExtender<'a, V, D>
 where
-    V: Num<SIZE> + From<D>,
-    D: Num<DSIZE> + TryFrom<V>,
+    V: Num + From<D>,
+    D: Num + TryFrom<V>,
+    [u8; size_of::<V>()]: ,
+    [u8; size_of::<D>()]: ,
 {
-    unsafe fn read_delta(&mut self) -> Option<Delta<V, D, SIZE, DSIZE>> {
+    unsafe fn read_delta(&mut self) -> Option<Delta<V, D>> {
         let Self {
             vec: PackedVec { ref inner, .. },
             pos,
@@ -259,7 +278,7 @@ where
         Some(delta)
     }
 
-    unsafe fn advance(&mut self, delta: Delta<V, D, SIZE, DSIZE>) {
+    unsafe fn advance(&mut self, delta: Delta<V, D>) {
         self.idx += 1;
         self.pos += delta.size_of_val();
         self.cur_val += delta.as_value();
@@ -289,7 +308,7 @@ where
                 ..
             } = self;
 
-            let delta = Delta::<V, D, SIZE, DSIZE>::compress(item - *cur_val);
+            let delta = Delta::<V, D>::compress(item - *cur_val);
 
             let _ = inner.splice(*pos..*pos, delta.to_bytes());
 
@@ -307,8 +326,7 @@ where
                 ..
             } = *self;
 
-            let new_delta =
-                Delta::<V, D, SIZE, DSIZE>::compress(next_delta.as_value() - delta.as_value());
+            let new_delta = Delta::<V, D>::compress(next_delta.as_value() - delta.as_value());
 
             let _ = inner.splice(pos..pos + next_delta.size_of_val(), new_delta.to_bytes());
         }
@@ -317,10 +335,12 @@ where
     }
 }
 
-impl<V, D, const SIZE: usize, const DSIZE: usize> Extend<V> for PackedVec<V, D, SIZE, DSIZE>
+impl<V, D> Extend<V> for PackedVec<V, D>
 where
-    V: Num<SIZE> + From<D>,
-    D: Num<DSIZE> + TryFrom<V>,
+    V: Num + From<D>,
+    D: Num + TryFrom<V>,
+    [u8; size_of::<V>()]: ,
+    [u8; size_of::<D>()]: ,
 {
     fn extend<T: IntoIterator<Item = V>>(&mut self, iter: T) {
         iter.into_iter().for_each(|el| {
@@ -329,10 +349,12 @@ where
     }
 }
 
-pub struct PackedVecIter<'s, V, D, const SIZE: usize, const DSIZE: usize>
+pub struct PackedVecIter<'s, V, D>
 where
-    V: Num<SIZE> + From<D>,
-    D: Num<DSIZE> + TryFrom<V>,
+    V: Num + From<D>,
+    D: Num + TryFrom<V>,
+    [u8; size_of::<V>()]: ,
+    [u8; size_of::<D>()]: ,
 {
     raw: &'s [u8],
     cur_val: V,
@@ -340,11 +362,12 @@ where
     _marker: PhantomData<D>,
 }
 
-impl<'s, V, D, const SIZE: usize, const DSIZE: usize> Iterator
-    for PackedVecIter<'s, V, D, SIZE, DSIZE>
+impl<'s, V, D> Iterator for PackedVecIter<'s, V, D>
 where
-    V: Num<SIZE> + From<D>,
-    D: Num<DSIZE> + TryFrom<V>,
+    V: Num + From<D>,
+    D: Num + TryFrom<V>,
+    [u8; size_of::<V>()]: ,
+    [u8; size_of::<D>()]: ,
 {
     type Item = V;
 
@@ -352,7 +375,7 @@ where
         if self.raw.is_empty() {
             None
         } else {
-            let delta = read_delta::<V, D, SIZE, DSIZE>(&self.raw);
+            let delta = read_delta::<V, D>(&self.raw);
             self.raw = &self.raw[delta.size_of_val()..];
 
             let delta = delta.as_value();
@@ -373,7 +396,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let mut vec = PackedVec::<u64, u8, { size_of::<u64>() }, { size_of::<u8>() }>::new();
+        let mut vec = PackedVec::<u64, u8>::new();
 
         let expected = [6345, 234, 34632, 34633, 656, 57];
 
@@ -430,7 +453,7 @@ mod tests {
     #[test]
     #[cfg_attr(debug_assertions, should_panic)]
     fn test_debug_assertion_deduped() {
-        let mut vec = PackedVec::<u64, u8, { size_of::<u64>() }, { size_of::<u8>() }>::new();
+        let mut vec = PackedVec::<u64, u8>::new();
 
         #[cfg(debug_assertions)]
         unsafe {
@@ -441,7 +464,7 @@ mod tests {
     #[test]
     #[cfg_attr(debug_assertions, should_panic)]
     fn test_debug_assertion_sorted() {
-        let mut vec = PackedVec::<u64, u8, { size_of::<u64>() }, { size_of::<u8>() }>::new();
+        let mut vec = PackedVec::<u64, u8>::new();
 
         #[cfg(debug_assertions)]
         unsafe {
@@ -451,7 +474,7 @@ mod tests {
 
     #[test]
     fn test_ratio() {
-        let mut vec = PackedVec::<u32, u8, { size_of::<u32>() }, { size_of::<u8>() }>::new();
+        let mut vec = PackedVec::<u32, u8>::new();
 
         let mut rng = thread_rng();
 
