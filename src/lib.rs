@@ -1,5 +1,4 @@
-#![allow(incomplete_features)]
-#![feature(is_sorted, const_generics, const_evaluatable_checked)]
+#![feature(is_sorted)]
 
 use std::{
     fmt::{self, Debug},
