@@ -39,6 +39,7 @@ impl PackedVec {
         Self { inner: Vec::new() }
     }
 
+    #[inline]
     pub fn iter(&self) -> PackedVecIter<'_> {
         PackedVecIter {
             raw: io::Cursor::new(self.inner.as_slice()),
@@ -46,10 +47,12 @@ impl PackedVec {
         }
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.iter().count()
     }
@@ -74,6 +77,7 @@ impl PackedVec {
     /// # Safety
     /// Passing a slice that is either not completely sorted or not completely deduped
     /// can corrupt this structure's internal storage
+    #[inline]
     pub unsafe fn extend_from_sorted_unique_slice(&mut self, elements: &[u64]) {
         debug_assert!(elements.is_sorted());
         debug_assert!({
@@ -105,6 +109,7 @@ pub enum InsertPosition {
 }
 
 impl InsertPosition {
+    #[inline]
     pub fn into_position(self) -> usize {
         match self {
             InsertPosition::Position(pos) | InsertPosition::AlreadyExists(pos) => pos,
@@ -144,6 +149,7 @@ impl<'a> PackedVecExtender<'a> {
     /// # Safety
     /// Using this function on a set of elements that is either not completely sorted or not completely
     /// deduped can corrupt this structure's internal storage
+    #[inline]
     pub unsafe fn push(&mut self, item: u64) -> InsertPosition {
         while let Some((delta, size)) = self.read_delta() {
             let new_val = self.cur_val + delta;
@@ -201,6 +207,7 @@ impl<'a> PackedVecExtender<'a> {
 }
 
 impl Extend<u64> for PackedVec {
+    #[inline]
     fn extend<T: IntoIterator<Item = u64>>(&mut self, iter: T) {
         iter.into_iter().for_each(|el| {
             self.push(el);
@@ -216,6 +223,7 @@ pub struct PackedVecIter<'s> {
 impl<'s> Iterator for PackedVecIter<'s> {
     type Item = u64;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.raw.position() == self.raw.get_ref().len() as u64 {
             None
