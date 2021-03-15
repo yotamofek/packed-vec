@@ -38,6 +38,12 @@ impl PackedVec {
         Self { inner: Vec::new() }
     }
 
+    pub fn with_capacity(cap_in_bytes: usize) -> Self {
+        Self {
+            inner: Vec::with_capacity(cap_in_bytes),
+        }
+    }
+
     #[inline]
     pub fn iter(&self) -> PackedVecIter<'_> {
         PackedVecIter {
