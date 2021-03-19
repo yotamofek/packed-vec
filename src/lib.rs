@@ -45,6 +45,11 @@ impl PackedVec {
     }
 
     #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.inner
+    }
+
+    #[inline]
     pub fn iter(&self) -> PackedVecIter<'_> {
         PackedVecIter {
             raw: io::Cursor::new(self.inner.as_slice()),
