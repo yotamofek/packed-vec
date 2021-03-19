@@ -44,6 +44,10 @@ impl PackedVec {
         }
     }
 
+    pub fn from_bytes(inner: Vec<u8>) -> Self {
+        Self { inner }
+    }
+
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         &self.inner
