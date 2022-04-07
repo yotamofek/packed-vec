@@ -1,11 +1,11 @@
-#![feature(is_sorted, option_result_unwrap_unchecked)]
+#![feature(is_sorted)]
 
 use std::{
     fmt::{self, Debug},
     io,
 };
 
-use prefix_varint::{read_varint_from_slice, write_varint};
+use prefix_varint::{read_varint, write_varint};
 
 pub struct PackedVec {
     inner: Vec<u8>,
@@ -155,7 +155,7 @@ impl<'a> PackedVecExtender<'a> {
 
         let mut cursor = io::Cursor::new(slice);
 
-        let delta = read_varint_from_slice(&mut cursor).unwrap_unchecked();
+        let delta = read_varint(&mut cursor).unwrap_unchecked();
 
         Some((delta, cursor.position() as usize))
     }
@@ -242,7 +242,7 @@ impl<'s> Iterator for PackedVecIter<'s> {
         if self.raw.position() == self.raw.get_ref().len() as u64 {
             None
         } else {
-            self.cur_val += unsafe { read_varint_from_slice(&mut self.raw).unwrap_unchecked() };
+            self.cur_val += unsafe { read_varint(&mut self.raw).unwrap_unchecked() };
 
             Some(self.cur_val)
         }
